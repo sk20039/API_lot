@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RequestBuilder } from '@/components/RequestBuilder';
+import { METHOD_COLORS } from '@/components/RequestBuilder/MethodSelector';
 import { ResponseViewer } from '@/components/ResponseViewer';
 import { EnvSelector } from '@/components/Environment/EnvSelector';
 import { AISidebar, AIContext } from '@/components/AISidebar/AISidebar';
@@ -24,7 +25,7 @@ function HistoryItem({ entry }: { entry: HistoryEntry }) {
       className="w-full text-left px-3 py-2 hover:bg-muted/20 border-b border-border/50 flex flex-col gap-0.5"
     >
       <div className="flex items-center gap-2">
-        <span className="text-xs font-mono text-blue-300">{entry.request.method}</span>
+        <span className={`text-xs font-mono ${METHOD_COLORS[entry.request.method]}`}>{entry.request.method}</span>
         <span className={`text-xs font-mono ${statusColor}`}>{statusCode}</span>
       </div>
       <div className="text-xs text-muted-foreground truncate">{entry.request.url}</div>

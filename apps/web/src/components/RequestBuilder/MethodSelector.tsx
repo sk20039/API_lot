@@ -3,7 +3,7 @@ import { HttpMethod } from '@apilot/shared';
 
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
-const METHOD_COLORS: Record<HttpMethod, string> = {
+export const METHOD_COLORS: Record<HttpMethod, string> = {
   GET: 'text-green-400',
   POST: 'text-yellow-400',
   PUT: 'text-blue-400',
