@@ -104,19 +104,82 @@ Please:
 });
 
 // ─── 3. Generate Tests ──────────────────────────────────────────────────────
-router.post('/generate-tests', async (req: Request, res: Response) => {
-  const { request, response } = req.body;
+type TestFormat = 'postman-js' | 'plain-js' | 'python' | 'shell';
 
-  await streamToResponse(
-    res,
-    [
-      {
-        role: 'user',
-        content: `Generate JavaScript test assertions for this API response.
-
-REQUEST: ${request.method} ${request.url}
+function buildTestPrompt(
+  request: { method: string; url: string },
+  response: { status: number; data: unknown },
+  format: TestFormat
+): { userContent: string; systemPrompt: string } {
+  const base = `REQUEST: ${request.method} ${request.url}
 RESPONSE STATUS: ${response.status}
-RESPONSE BODY: ${JSON.stringify(response.data, null, 2)}
+RESPONSE BODY: ${JSON.stringify(response.data, null, 2)}`;
+
+  switch (format) {
+    case 'plain-js':
+      return {
+        userContent: `Generate plain JavaScript test assertions for this API response using fetch and console.assert (no external libraries).
+
+${base}
+
+Use this style:
+const res = await fetch("${request.url}");
+const body = await res.json();
+console.assert(res.status === 200, "Expected 200");
+console.assert(typeof body.id === "number", "id should be a number");
+
+Include tests for status code, required fields, and data types.
+Return ONLY the JavaScript code, no explanation.`,
+        systemPrompt: 'You are an API test engineer. Return only clean, runnable plain JavaScript test code using fetch and console.assert.',
+      };
+
+    case 'python':
+      return {
+        userContent: `Generate Python test assertions for this API response using pytest and the requests library.
+
+${base}
+
+Use this style:
+import requests
+import pytest
+
+def test_api_response():
+    response = requests.${request.method.toLowerCase()}("${request.url}")
+    assert response.status_code == 200
+    body = response.json()
+    assert "id" in body
+    assert isinstance(body["id"], int)
+
+Include tests for status code, required fields, and data types.
+Return ONLY the Python code, no explanation.`,
+        systemPrompt: 'You are an API test engineer. Return only clean, runnable Python test code using pytest and requests.',
+      };
+
+    case 'shell':
+      return {
+        userContent: `Generate shell script test assertions for this API response using curl and bash.
+
+${base}
+
+Use this style:
+#!/bin/bash
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${request.url}")
+[ "$STATUS" -eq 200 ] && echo "PASS: status 200" || echo "FAIL: expected 200, got $STATUS"
+
+BODY=$(curl -s "${request.url}")
+echo "$BODY" | grep -q '"id"' && echo "PASS: id field exists" || echo "FAIL: id field missing"
+
+Include tests for status code and key field presence.
+Return ONLY the shell script, no explanation.`,
+        systemPrompt: 'You are an API test engineer. Return only clean, runnable bash shell script test code using curl.',
+      };
+
+    case 'postman-js':
+    default:
+      return {
+        userContent: `Generate JavaScript test assertions for this API response.
+
+${base}
 
 Write tests using this style:
 pm.test("description", () => {
@@ -131,10 +194,16 @@ Include tests for:
 - Specific value checks where appropriate
 
 Return ONLY the JavaScript code, no explanation.`,
-      },
-    ],
-    'You are an API test engineer. Return only clean, runnable JavaScript test code.'
-  );
+        systemPrompt: 'You are an API test engineer. Return only clean, runnable JavaScript test code.',
+      };
+  }
+}
+
+router.post('/generate-tests', async (req: Request, res: Response) => {
+  const { request, response, format = 'postman-js' } = req.body;
+  const { userContent, systemPrompt } = buildTestPrompt(request, response, format as TestFormat);
+
+  await streamToResponse(res, [{ role: 'user', content: userContent }], systemPrompt);
 });
 
 // ─── 4. AI Chat ─────────────────────────────────────────────────────────────
