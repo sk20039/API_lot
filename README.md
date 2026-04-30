@@ -1,4 +1,4 @@
-# APIlot
+# APilot
 
 An open-source API testing tool with Claude AI built directly into the workflow — like Postman, but with an AI copilot that explains responses, diagnoses errors, generates tests, and answers your questions in context.
 
